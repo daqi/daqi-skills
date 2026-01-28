@@ -1,0 +1,19 @@
+{
+  "name": "daqi-skills",
+  "displayName": "Daqi Skills",
+  "description": "A collection of article writing and content creation skills",
+  "metadata": {
+    "version": "0.0.0",
+    "author": "daqi",
+    "license": "MIT"
+  },
+  "skills": [
+    "article-analyzer",
+    "article-outliner",
+    "article-polish",
+    "article-producer",
+    "article-writer",
+    "html-parser-rule",
+    "skill-manager"
+  ]
+}
