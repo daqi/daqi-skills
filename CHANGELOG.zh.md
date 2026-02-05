@@ -12,3 +12,9 @@
 
 ### 修复
 - 修正 article-producer 中的 skill 引用名称 (outliner → article-outliner, writer-agent → article-writer, polish → article-polish)
+
+## 0.0.2 - 2026-02-05
+
+### 新功能
+- 新增 `xhs-writer`：小红书爆款文案助手（S.L.R.A. 模型）
+- 新增 `xhs-md-screenshot-images`：将小红书 Markdown 渲染为 HTML 并用 Playwright 截图导出图片

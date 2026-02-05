@@ -12,3 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 - Correct skill reference names in article-producer (outliner → article-outliner, writer-agent → article-writer, polish → article-polish)
+
+## 0.0.2 - 2026-02-05
+
+### Features
+- Add `xhs-writer` skill for Xiaohongshu viral copywriting
+- Add `xhs-md-screenshot-images` skill to render XHS Markdown to HTML and export screenshots via Playwright
