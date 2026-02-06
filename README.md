@@ -11,6 +11,7 @@ A collection of article writing and content creation skills for Claude Code.
 - **article-writer** - Article writing assistant
 - **xhs-writer** - Xiaohongshu viral copywriting assistant
 - **xhs-md-screenshot-images** - Render XHS Markdown to HTML and export screenshot images
+- **xhs-md-to-plain-text** - Convert Markdown to plain text for Xiaohongshu posting
 - **html-parser-rule** - HTML parsing rules
 - **skill-manager** - Skill management utility
 

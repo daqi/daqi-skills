@@ -15,6 +15,7 @@
     "article-writer",
     "xhs-writer",
     "xhs-md-screenshot-images",
+    "xhs-md-to-plain-text",
     "html-parser-rule",
     "skill-manager"
   ]
