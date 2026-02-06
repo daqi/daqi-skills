@@ -5,6 +5,11 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.0.3 - 2026-02-06
+
+### 重构
+- 将 `xhs-md-screenshot-images` 的 md2image 脚本切换为 Bun（TypeScript）实现
+
 ## 0.0.1 - 2026-01-28
 
 ### 新功能
