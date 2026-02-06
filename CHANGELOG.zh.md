@@ -5,6 +5,11 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.0.4 - 2026-02-06
+
+### 新功能
+- 新增 `xhs-md-to-plain-text`：将 Markdown 转为适合小红书发布的纯文本
+
 ## 0.0.3 - 2026-02-06
 
 ### 重构
