@@ -173,9 +173,15 @@ body { font-family: var(--font); }
   padding: 12px 0 12px 20px;
   border-left: 6px solid #111;
 }
+.content blockquote p {
+  margin: 5px 0;
+}
 .content code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.95em;
+  background: #f5f5f5;
+  border-radius: 20px;
+  padding: 10px;
 }
 .content a { color: inherit; text-decoration: underline; }
 .content img { max-width: 100%; height: auto; display: block; }
