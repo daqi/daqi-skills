@@ -15,6 +15,10 @@ A collection of article writing and content creation skills
 - **html-parser-rule** - HTML parsing rules
 - **skill-manager** - Skill management utility
 
+## Tools
+
+- **xhs-md2img-web** - Web UI for XHS Markdown-to-image https://sweetbook.daqi.fan/
+
 ## Installation
 
 ```bash

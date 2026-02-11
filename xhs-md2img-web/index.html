@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Markdown转小红书长文图工具</title>
+    <script src="https://registry.npmmirror.com/marked/17.0.1/files/lib/marked.umd.js"></script>
+    <script src="https://registry.npmmirror.com/dom-to-image-more/3.7.2/files/dist/dom-to-image-more.min.js"></script>
+    <script src="https://registry.npmmirror.com/jszip/3.10.1/files/dist/jszip.min.js"></script>
+    
+    <style>
+        :root {
+            --p-width: 450px;
+            --p-height: 600px;
+            --p-padding: 40px;
+            --p-font-size: 16px;
+            --p-title-size: 2.4em;
+            --p-gap: calc(var(--p-padding) * 2);
+            --sidebar-width: 400px;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background: #f0f2f5; }
+
+        .app-container { display: flex; height: 100vh; width: 100vw; }
+
+        /* --- 左侧编辑区 --- */
+        .left-panel {
+            width: var(--sidebar-width);
+            background: white;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #d0d7de;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .config-header { padding: 20px; border-bottom: 1px solid #eee; }
+        .config-header h2 { margin: 0 0 15px 0; font-size: 18px; color: #1a1a1a; }
+
+        .config-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .config-item { display: flex; flex-direction: column; gap: 5px; }
+        .config-item label { font-size: 12px; font-weight: bold; color: #666; display: flex; justify-content: space-between; }
+
+        #md-input {
+            flex: 1;
+            border: none;
+            padding: 20px;
+            font-family: "Fira Code", monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            background: #fafafa;
+        }
+
+        .action-btns { padding: 20px; background: white; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 10px; }
+
+        /* --- 右侧预览区 --- */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            background: #e5e7eb;
+            padding: 40px;
+        }
+
+        .nav-bar {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255,255,255,0.8);
+            padding: 8px 16px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+        .pagination-dots {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #c9d1d9;
+            cursor: pointer;
+        }
+        .dot.active { background: #24292f; }
+        .dot:hover { background: #6e7781; }
+
+        #viewport {
+            width: var(--p-width);
+            height: var(--p-height);
+            min-width: var(--p-width);
+            min-height: var(--p-height);
+            background: white;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+            border-radius: 4px;
+        }
+
+        #content-wrapper {
+            width: var(--p-width);
+            height: var(--p-height);
+            column-width: var(--p-width);
+            column-gap: var(--p-gap);
+            column-fill: auto;
+            box-sizing: border-box;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* --- GitHub 样式 Markdown --- */
+        .md-body { padding: var(--p-padding); font-size: var(--p-font-size); line-height: 1.9; word-wrap: break-word; color: #24292f; font-family: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", -apple-system, sans-serif; font-kerning: none; font-variant-ligatures: none; font-feature-settings: "kern" 0, "liga" 0, "clig" 0; text-rendering: geometricPrecision; letter-spacing: 0; }
+        .md-body h1 { padding-bottom: 0.3em; line-height: 1.3; font-size: var(--p-title-size); margin: 0.4em 0 0.3em; }
+        .md-body h2 { margin: 0.45em 0 0.25em; font-size: 1.35em; }
+        .md-body h3 { margin: 0.4em 0 0.2em; font-size: 1.2em; }
+        .md-body blockquote { border-left: 4px solid #d0d7de; padding-left: 16px; color: #57606a; margin: 0 0 16px 0; }
+        .md-body img { max-width: 100%; border-radius: 6px; }
+        .md-body .hero-wrapper { margin: 0; }
+        .md-body img.hero-image {
+            display: block;
+            width: calc(100% + (var(--p-padding) * 2));
+            margin: calc(-1 * var(--p-padding)) calc(-1 * var(--p-padding)) var(--p-padding);
+            max-width: none;
+            border-radius: 0;
+        }
+        .md-body pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow: hidden; }
+        .md-body h1, .md-body img, .md-body pre, .md-body blockquote { break-inside: avoid; }
+
+        /* 按钮样式 */
+        button { border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-zip { background: #2da44e; color: white; width: 100%; }
+        .btn-zip:hover { background: #2c974b; }
+        .btn-nav { background: white; border: 1px solid #d0d7de; }
+        .btn-nav:hover { background: #f6f8fa; border-color: #b6bec8; }
+        .btn-nav.active { background: #24292f; color: white; border-color: #24292f; }
+        .btn-nav:disabled { opacity: 0.4; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="left-panel">
+        <div class="config-header">
+            <h2>配置与编辑</h2>
+            <div class="config-group">
+                <div class="config-item">
+                    <label>字体大小 <span id="v-fs">16px</span></label>
+                    <input type="range" id="in-fs" min="12" max="24" value="16">
+                </div>
+                <div class="config-item">
+                    <label>标题大小 <span id="v-title">1.8em</span></label>
+                    <input type="range" id="in-title" min="1.8" max="3" value="2.4" step="0.1">
+                </div>
+                <div class="config-item">
+                    <label>边距大小 <span id="v-pd">40px</span></label>
+                    <input type="range" id="in-pd" min="10" max="80" value="40">
+                </div>
+                <div class="config-item">
+                    <label>卡片比例 <span id="v-ratio">3:4</span></label>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn-nav" type="button" id="ratio-34">3:4</button>
+                        <button class="btn-nav" type="button" id="ratio-35">3:5</button>
+                    </div>
+                </div>
+            </div>
+            <h2 style="margin-bottom: 0">Markdown 文档</h2>
+        </div>
+        <textarea id="md-input" placeholder="支持 Markdown 实时预览..."></textarea>
+
+        <div class="action-btns">
+            <div style="font-size:12px;color:#666;margin-bottom:8px;">提示: 支持粘贴或拖拽图片，自动插入为 Blob URL（刷新后失效）。</div>
+            <div id="status" style="font-size:12px;color:#666;margin-bottom:8px;"></div>
+            <button class="btn-zip" id="zip-btn" onclick="captureAndZip()">打包下载全部卡片 (ZIP)</button>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="nav-bar">
+            <button class="btn-nav" onclick="goFirst()">&lt;&lt;</button>
+            <button class="btn-nav" onclick="changePage(-1)">&lt;</button>
+            <span id="page-info" style="font-weight: bold; font-variant-numeric: tabular-nums;">1 / 1</span>
+            <button class="btn-nav" onclick="changePage(1)">&gt;</button>
+            <button class="btn-nav" onclick="goLast()">&gt;&gt;</button>
+        </div>
+
+        <div id="viewport">
+            <div id="content-wrapper" class="md-body"></div>
+        </div>
+        <div id="page-dots" class="pagination-dots"></div>
+    </div>
+</div>
+<div style="display: none;" id="demo">
+# 写作不是从零开始，是一条会越来越快的流水线。  
+
+📳 昨晚手机震动到停不下来。  
+
+我昨天发了一篇：《Markdown 一键变小红书图片》。  
+
+本来只想结束：为了发一篇笔记。  
+
+没想到评论区直接炸了：  
+
+“终于有人做这个了。”  
+“我滴妈这个也太有用了！”  
+“我也碰到这个问题！”  
+“我用 Typora 导 PDF + 快捷指令转图，但样式永远调不顺。”  
+“发个文还得手工截图 Notion，发一次就不想发了。”  
+
+更离谱的是：  
+
+我上一篇结尾让大家评论 **“内测”**。  
+
+一晚上就有 16 个人来支持。  
+
+我和几个创作者聊完，才发现：  
+
+**缺的不是工具。**  
+
+**缺的是一条完整的创作流水线。**  
+
+简单说：让创作像做饭一样。  
+
+菜在冰箱里（素材），灵感像突然想吃辣（想法），写稿是下锅（成文），发布是装盘上桌。  
+
+现在的问题是——你得在五个厨房来回跑。  
+
+你看大多数人的创作：  
+
+素材在收藏夹，灵感在备忘录，文案在 Typora / Notion，图片靠截图，发布去小红书后台。  
+
+全是孤岛。  
+
+没有上下文。  
+没有记忆。  
+没有协作。  
+
+所以每次都得从零开始。  
+
+
+真正高效的创作应该是：  
+
+素材 → 灵感 → 文案 → 发布  
+
+一条连续的“传送带”。  
+
+素材被 AI 理解  
+灵感被 AI 提炼  
+文案基于素材生成  
+发布自动格式化  
+
+你会明显感觉：  
+
+不是每次憋一篇。  
+
+而是越写越省力。  
+
+
+说实话，这套流程我已经在用。  
+
+我用 VSCode + Markdown + AI，搭了一个完整的本地创作系统。  
+
+素材、灵感、文案、发布。  
+
+全部在一个环境里完成。  
+
+效率真的很夸张。  
+
+但我很快被现实打了一下：  
+
+**这套方式，只属于程序员。**  
+
+VSCode 太复杂。  
+文件系统太抽象。  
+AI 那套配置流程更是劝退。  
+
+我当时其实有点慌。  
+
+因为我很清楚：  
+
+我能用，不等于你能用。  
+
+
+所以我决定把这套流程做成一个真正的应用。  
+
+一个专门为小红书创作者设计的：  
+
+**AI 创作工作站（本地优先）**  
+
+它不是那种“把内容丢进云端”的笔记产品。  
+
+它更像一个装在你电脑里的创作工作台。  
+
+所有内容都在你电脑里：一篇篇稿子（文本文件）。  
+
+AI 也不会是黑盒乱猜。  
+
+它只在你的素材库里找东西、帮你组织、帮你写。  
+
+它“知道”：  
+
+你收藏过什么  
+你写过什么  
+你关注什么  
+你正在创作什么  
+
+
+在这个应用里，创作会变成这样：  
+
+你保存一篇爆文 → 自动进素材库  
+
+你写下一句想法 → 自动关联相关素材  
+
+你输入一个标题 → AI 基于你的素材生成初稿  
+
+你点击发布 → 自动生成小红书长文图片格式  
+
+整个过程是连续的。  
+
+不是割裂的。  
+
+
+更重要的是：  
+
+**这是“内容先放在你电脑里”的。**  
+
+你的内容永远在本地。  
+
+不依赖平台。  
+不锁死生态。  
+不怕产品消失。  
+
+未来可以同步。  
+
+但“本地”，永远是根。  
+
+
+你可以把它理解成：  
+
+Typora + 素材库 + AI + 小红书发布  
+
+但我想做的是：  
+
+你不用在四个地方来回切。  
+
+所有东西在一个地方，前后能串起来。  
+
+
+我做了个zui直观的对比：  
+
+以前：  
+
+收藏 → 忘记  
+写作 → 从零开始  
+发布 → 手动处理格式  
+
+现在：  
+
+素材 → 可被 AI 直接调用  
+写作 → 基于素材生成  
+发布 → 一键完成  
+
+**创作第一次变成“可积累的资产”。**  
+
+
+这个项目刚开始。  
+
+第一阶段优先支持：  
+
+Markdown 写作  
+素材库  
+AI 写作  
+一键生成小红书长文图片  
+
+后面逐步加：  
+
+灵感系统  
+选题引擎  
+自动发布  
+本地 AI 支持  
+
+
+如果你也是小红书创作者，  
+
+或者你也习惯用 Markdown 写作，  
+
+想一起把它打磨出来，评论区打一句：  
+
+**“想参与”**  
+
+我会优先邀请愿意认真给反馈的人一起参与设计。  
+
+（比如：你现在用什么写作/排版工具？最痛的一步是哪一步？）  
+
+这不只是做一个小工具。  
+
+我更想和你一起，把创作这件事重新设计一遍。  
+</div>
+
+<script>
+    const wrapper = document.getElementById('content-wrapper');
+    const viewport = document.getElementById('viewport');
+    const input = document.getElementById('md-input');
+
+    input.value = document.getElementById('demo').innerText.trim();
+    
+    const createdBlobs = [];
+    
+    let currentPage = 0;
+    let totalPages = 0;
+
+    // 实时监听输入
+    input.addEventListener('input', render);
+
+    // 支持粘贴图片为 blob URL 并插入到 Markdown
+    input.addEventListener('paste', async function(e) {
+        const items = (e.clipboardData || window.clipboardData).items;
+        if (!items) return;
+        await handleImageItems(items, e);
+    });
+    function insertAtCursor(el, text) {
+        const start = el.selectionStart || 0;
+        const end = el.selectionEnd || 0;
+        const v = el.value;
+        el.value = v.slice(0,start) + text + v.slice(end);
+        const pos = start + text.length;
+        el.selectionStart = el.selectionEnd = pos;
+        el.focus();
+    }
+
+    function setCursorFromPoint(el, x, y) {
+        const pos = getCaretIndexFromPoint(el, x, y);
+        if (typeof pos === 'number') {
+            el.selectionStart = el.selectionEnd = pos;
+        }
+        el.focus();
+    }
+
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    function measureWidth(text) {
+        return measureCtx.measureText(text).width;
+    }
+    function wrapLine(text, maxWidth) {
+        if (text.length === 0) return [{ start: 0, end: 0 }];
+        const segments = [];
+        let start = 0;
+        while (start < text.length) {
+            let low = start;
+            let high = text.length;
+            let fit = start;
+            while (low <= high) {
+                const mid = Math.floor((low + high) / 2);
+                const w = measureWidth(text.slice(start, mid));
+                if (w <= maxWidth) {
+                    fit = mid;
+                    low = mid + 1;
+                } else {
+                    high = mid - 1;
+                }
+            }
+            if (fit === start) fit = Math.min(start + 1, text.length);
+            segments.push({ start, end: fit });
+            start = fit;
+        }
+        return segments;
+    }
+    function findCharIndexInSegment(text, maxWidth, x) {
+        if (x <= 0) return 0;
+        let low = 0;
+        let high = text.length;
+        let fit = 0;
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const w = measureWidth(text.slice(0, mid));
+            if (w <= maxWidth && w <= x) {
+                fit = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return fit;
+    }
+    function getCaretIndexFromPoint(el, x, y) {
+        const rect = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const paddingTop = parseFloat(style.paddingTop) || 0;
+        const paddingRight = parseFloat(style.paddingRight) || 0;
+        const fontSize = parseFloat(style.fontSize) || 14;
+        const lineHeight = parseFloat(style.lineHeight) || Math.round(fontSize * 1.2);
+        const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        measureCtx.font = font;
+
+        const relX = x - rect.left - paddingLeft + el.scrollLeft;
+        const relY = y - rect.top - paddingTop + el.scrollTop;
+        const lines = (el.value || '').split('\n');
+        if (lines.length === 0) return 0;
+
+        const contentWidth = rect.width - paddingLeft - paddingRight;
+        const visualLineIndex = Math.max(0, Math.floor(relY / lineHeight));
+
+        let visualCount = 0;
+        let lineIndex = 0;
+        let segment = { start: 0, end: 0 };
+        for (let i = 0; i < lines.length; i++) {
+            const segs = wrapLine(lines[i], contentWidth);
+            if (visualLineIndex < visualCount + segs.length) {
+                lineIndex = i;
+                segment = segs[visualLineIndex - visualCount];
+                break;
+            }
+            visualCount += segs.length;
+            lineIndex = i;
+            segment = segs[segs.length - 1];
+        }
+
+        const segText = lines[lineIndex].slice(segment.start, segment.end);
+        const colInSeg = findCharIndexInSegment(segText, contentWidth, Math.max(0, relX));
+        const col = Math.min(lines[lineIndex].length, segment.start + colInSeg);
+
+        let index = 0;
+        for (let i = 0; i < lineIndex; i++) {
+            index += lines[i].length + 1;
+        }
+        return index + col;
+    }
+
+    async function handleImageItems(items, e) {
+        let handled = false;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type && item.type.indexOf('image') !== -1) {
+                const file = item.getAsFile();
+                if (!file) continue;
+                const url = URL.createObjectURL(file);
+                createdBlobs.push(url);
+                const alt = file.name || 'pasted-image';
+                insertAtCursor(input, `![${alt}](${url})\n\n`);
+                handled = true;
+            }
+        }
+        if (handled) {
+            if (e) e.preventDefault();
+            render();
+        }
+    }
+
+    async function handleImageFiles(files, e) {
+        let handled = false;
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file || !file.type || file.type.indexOf('image') !== 0) continue;
+            const url = URL.createObjectURL(file);
+            createdBlobs.push(url);
+            const alt = file.name || 'dropped-image';
+            insertAtCursor(input, `![${alt}](${url})\n\n`);
+            handled = true;
+        }
+        if (handled) {
+            if (e) e.preventDefault();
+            render();
+        }
+    }
+
+    // 在页面卸载前撤销创建的 blob URL，释放内存
+    window.addEventListener('beforeunload', function() {
+        createdBlobs.forEach(u => {
+            try { URL.revokeObjectURL(u); } catch(e) {}
+        });
+    });
+
+    // 拖拽图片到编辑区
+    input.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+    input.addEventListener('drop', async function(e) {
+        setCursorFromPoint(input, e.clientX, e.clientY);
+        const files = e.dataTransfer && e.dataTransfer.files;
+        if (files && files.length) {
+            await handleImageFiles(files, e);
+            return;
+        }
+        const items = e.dataTransfer && e.dataTransfer.items;
+        if (!items) return;
+        await handleImageItems(items, e);
+    });
+
+    // 配置项实时生效
+    const controls = { 'in-fs': '--p-font-size', 'in-pd': '--p-padding' };
+    Object.keys(controls).forEach(id => {
+        document.getElementById(id).oninput = function() {
+            const val = this.value + 'px';
+            document.documentElement.style.setProperty(controls[id], val);
+            document.getElementById('v-' + id.split('-')[1]).innerText = val;
+            updateLayout();
+        };
+    });
+
+    document.getElementById('in-title').oninput = function() {
+        const val = this.value + 'em';
+        document.documentElement.style.setProperty('--p-title-size', val);
+        document.getElementById('v-title').innerText = val;
+        updateLayout();
+    };
+
+    function setRatio(width, height) {
+        document.documentElement.style.setProperty('--p-width', width + 'px');
+        document.documentElement.style.setProperty('--p-height', height + 'px');
+        document.getElementById('v-ratio').innerText = `${width / 150}:${height / 150}`;
+        document.getElementById('ratio-34').classList.toggle('active', height === 600);
+        document.getElementById('ratio-35').classList.toggle('active', height === 750);
+        updateLayout();
+    }
+    document.getElementById('ratio-34').addEventListener('click', function() {
+        setRatio(450, 600);
+    });
+    document.getElementById('ratio-35').addEventListener('click', function() {
+        setRatio(450, 750);
+    });
+    setRatio(450, 600);
+
+    function getStep() {
+        const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--p-gap')) || 0;
+        return viewport.offsetWidth + gap;
+    }
+
+    function render() {
+        const content = input.value || "# 欢迎使用\n在左侧输入 Markdown，右侧实时预览分页。\n\n## 优点\n- **左右结构**：编辑更高效\n- **自动分页**：不按段落，按行切分\n- **3:4 比例**：适合小红书/海报";
+        wrapper.innerHTML = marked.parse(content);
+        applyHeroImage();
+        waitForImages();
+    }
+
+    function applyHeroImage() {
+        wrapper.querySelectorAll('img.hero-image').forEach(img => img.classList.remove('hero-image'));
+        wrapper.querySelectorAll('.hero-wrapper').forEach(el => el.classList.remove('hero-wrapper'));
+
+        let firstMeaningful = null;
+        for (const node of wrapper.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '') continue;
+            if (node.nodeType === Node.COMMENT_NODE) continue;
+            firstMeaningful = node;
+            break;
+        }
+        if (!firstMeaningful || firstMeaningful.nodeType !== Node.ELEMENT_NODE) return;
+
+        if (firstMeaningful.tagName === 'IMG') {
+            firstMeaningful.classList.add('hero-image');
+            return;
+        }
+
+        if (firstMeaningful.tagName === 'P') {
+            const text = firstMeaningful.textContent.trim();
+            const imgs = firstMeaningful.querySelectorAll('img');
+            if (text === '' && imgs.length === 1) {
+                firstMeaningful.classList.add('hero-wrapper');
+                imgs[0].classList.add('hero-image');
+            }
+        }
+    }
+
+    function waitForImages() {
+        const imgs = wrapper.querySelectorAll('img');
+        let pending = 0;
+        imgs.forEach(img => {
+            if (!img.complete) {
+                pending++;
+                img.addEventListener('load', () => {
+                    pending--;
+                    if (pending === 0) updateLayout();
+                }, { once: true });
+                img.addEventListener('error', () => {
+                    pending--;
+                    if (pending === 0) updateLayout();
+                }, { once: true });
+            }
+        });
+        if (pending === 0) updateLayout();
+    }
+
+    function updateLayout() {
+        const step = getStep();
+        totalPages = Math.ceil((wrapper.scrollWidth + (step - viewport.offsetWidth)) / step) || 1;
+        if (currentPage >= totalPages) currentPage = totalPages - 1;
+        applyTransform();
+        document.getElementById('page-info').innerText = `${currentPage + 1} / ${totalPages}`;
+        renderDots();
+    }
+
+    function changePage(dir) {
+        currentPage = Math.max(0, Math.min(totalPages - 1, currentPage + dir));
+        applyTransform();
+        document.getElementById('page-info').innerText = `${currentPage + 1} / ${totalPages}`;
+        renderDots();
+    }
+
+    function goFirst() {
+        currentPage = 0;
+        applyTransform();
+        document.getElementById('page-info').innerText = `${currentPage + 1} / ${totalPages}`;
+        renderDots();
+    }
+
+    function goLast() {
+        currentPage = Math.max(0, totalPages - 1);
+        applyTransform();
+        document.getElementById('page-info').innerText = `${currentPage + 1} / ${totalPages}`;
+        renderDots();
+    }
+
+    function renderDots() {
+        const dots = document.getElementById('page-dots');
+        if (!dots) return;
+        dots.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot' + (i === currentPage ? ' active' : '');
+            dot.addEventListener('click', () => {
+                currentPage = i;
+                applyTransform();
+                document.getElementById('page-info').innerText = `${currentPage + 1} / ${totalPages}`;
+                renderDots();
+            });
+            dots.appendChild(dot);
+        }
+    }
+
+    function applyTransform() {
+        wrapper.style.transform = `translateX(-${currentPage * getStep()}px)`;
+    }
+
+    async function captureAndZip() {
+        const zip = new JSZip();
+        const originalPage = currentPage;
+        const btn = document.getElementById('zip-btn');
+        const statusEl = document.getElementById('status');
+        btn.disabled = true;
+
+        if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+        }
+
+        for (let i = 0; i < totalPages; i++) {
+            if (statusEl) statusEl.innerText = `导出中: ${i+1}/${totalPages}`;
+            currentPage = i;
+            applyTransform();
+            await new Promise(r => setTimeout(r, 400));
+
+            const dataUrl = await domtoimage.toPng(viewport, {
+                cacheBust: true,
+                scale: 3,
+                style: {
+                    fontKerning: 'none',
+                    fontVariantLigatures: 'none',
+                    fontFeatureSettings: '"kern" 0, "liga" 0, "clig" 0',
+                    letterSpacing: '0',
+                    textRendering: 'geometricPrecision'
+                }
+            });
+            const data = dataUrl.split(',')[1];
+            zip.file(`page_${String(i+1).padStart(2,'0')}.png`, data, {base64: true});
+        }
+
+        const blob = await zip.generateAsync({type: "blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `card_export_${Date.now()}.zip`;
+        link.click();
+
+        currentPage = originalPage;
+        applyTransform();
+        btn.disabled = false;
+        if (statusEl) statusEl.innerText = "导出完成！";
+    }
+
+    // 初始渲染
+    render();
+</script>
+
+</body>
+</html>
