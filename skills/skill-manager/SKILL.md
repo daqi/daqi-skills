@@ -20,10 +20,15 @@ description: skill查询与管理。列出所有可用skill清单，搜索及查
 
 ### 1. 列出所有skill
 
-**仅**使用 `run_in_terminal` 执行以下单条合并命令。禁止在执行前运行 `ls` 或进行其他环境检查：
+**Agent Execution Instructions**:
+1. Determine this SKILL.md file's directory path as `SKILL_DIR`
+2. Script path = `${SKILL_DIR}/scripts/<script-name>.ts`
+3. Replace all `${SKILL_DIR}` in this document with the actual path
+
+**仅**执行以下单条命令。禁止在执行前运行 `ls` 或进行其他环境检查：
 
 ```bash
-echo "| skill名称 | 简短描述 |" && echo "| :--- | :--- |" && for file in /Users/qiyunjiang/.copilot/skills/*/SKILL.md; do name=$(basename $(dirname "$file")); desc=$(grep "^description: " "$file" | sed 's/^description: //;s/^"//;s/"$//' | head -n 1 || echo ""); if [ -z "$desc" ]; then echo "| [$name]($file) | ❌ 缺失描述 |"; else echo "| [$name]($file) | $desc |"; fi; done
+npx -y bun ${SKILL_DIR}/scripts/list-skills.ts
 ```
 
 ### 2. 搜索skill
@@ -31,7 +36,7 @@ echo "| skill名称 | 简短描述 |" && echo "| :--- | :--- |" && for file in /
 当用户模糊查询时（如“找一个处理PDF的skill”），可以配合 `grep` 搜索：
 
 ```bash
-grep -r "PDF" $HOME/.copilot/skills/*/SKILL.md | cut -d: -f1 | sort | uniq
+grep -r "PDF" "${SKILL_DIR}/../*/SKILL.md" | cut -d: -f1 | sort | uniq
 ```
 
 ### 3. 查看特定skill
@@ -49,7 +54,7 @@ grep -r "PDF" $HOME/.copilot/skills/*/SKILL.md | cut -d: -f1 | sort | uniq
    description: 简短描述（100字以内，包含主要功能和触发词）
    ---
    ```
-3. 使用 `replace_string_in_file` 或相关工具将生成的 YAML 插入到文件最顶部。
+3. 将生成的 YAML 插入到文件最顶部。
 
 ## 注意事项
 
