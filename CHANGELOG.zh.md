@@ -5,6 +5,14 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.2.1 - 2026-02-11
+
+### 修复
+- 调整 `xhs-md2img` 的标题与代码样式
+
+### 文档
+- 添加鸣谢
+
 ## 0.2.0 - 2026-02-11
 
 ### 新功能
