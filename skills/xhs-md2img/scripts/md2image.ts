@@ -24,13 +24,12 @@ const DEFAULT_CONFIG = {
   bodyFontPx: 50,        // 正文字号
   lineHeight: 1.9,       // 行高
   paragraphGap: 40,      // 段落间距
-  titleScale: 2.5,       // 标题字号倍数
-  titleGap: 30,          // 标题下方间距
   deviceScale: 2,        // 设备像素比
-  format: 'png',         // 输出格式
-  quality: 85,           // JPG 质量
-  maxPages: 20,          // 最大页数（用于预估容器宽度）
 };
+
+// Internal: page count estimation to size the multi-column container/viewport.
+// Actual page count is computed after rendering.
+const INTERNAL_MAX_PAGES = 20;
 
 /**
  * 解析命令行参数
@@ -40,18 +39,13 @@ function parseArgs() {
   const config = { ...DEFAULT_CONFIG };
   let mdFile = null;
   let outDir = 'xhs-img';
-  let title = '';
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--width') config.width = parseInt(args[++i]);
     else if (arg === '--height') config.height = parseInt(args[++i]);
     else if (arg === '--out') outDir = args[++i];
-    else if (arg === '--title') title = args[++i];
     else if (arg === '--device-scale') config.deviceScale = parseFloat(args[++i]);
-    else if (arg === '--format') config.format = args[++i];
-    else if (arg === '--quality') config.quality = parseInt(args[++i]);
-    else if (arg === '--max-pages') config.maxPages = parseInt(args[++i]);
     else if (!mdFile) mdFile = arg;
   }
 
@@ -59,25 +53,13 @@ function parseArgs() {
     console.error('Usage: node md2image.js <markdown-file> [options]');
     console.error('Options:');
     console.error('  --out <dir>           输出目录 (默认: xhs-img)');
-    console.error('  --title <text>        文章标题');
     console.error('  --width <px>          单页宽度 (默认: 1440)');
     console.error('  --height <px>         单页高度 (默认: 1920)');
     console.error('  --device-scale <n>    设备像素比 (默认: 2)');
-    console.error('  --format <png|jpg>    输出格式 (默认: png)');
-    console.error('  --quality <n>         JPG 质量 (默认: 85)');
-    console.error('  --max-pages <n>       最大页数 (默认: 20)');
     process.exit(1);
   }
 
-  return { mdFile, outDir, title, config };
-}
-
-/**
- * 从 Markdown 提取标题
- */
-function extractTitle(markdown) {
-  const match = markdown.match(/^#\s+(.+?)$/m);
-  return match ? match[1].trim() : '';
+  return { mdFile, outDir, config };
 }
 
 /**
@@ -112,10 +94,10 @@ function renderMarkdown(markdown, mdFilePath) {
  * 生成 HTML 模板（使用 CSS 多列布局）
  */
 function generateHTML(bodyHtml, title, config) {
-  const { width, height, padding, gap, bodyFontPx, lineHeight, paragraphGap, titleScale, titleGap, maxPages } = config;
+  const { width, height, padding, gap, bodyFontPx, lineHeight, paragraphGap } = config;
 
   // 容器宽度 = 单页宽度 × 最大页数
-  const containerWidth = width * maxPages;
+  const containerWidth = width * INTERNAL_MAX_PAGES;
 
   const css = `
 :root {
@@ -125,8 +107,6 @@ function generateHTML(bodyHtml, title, config) {
   --pad: ${padding}px;
   --gap: ${gap}px;
   --content-font: ${bodyFontPx}px;
-  --title-scale: ${titleScale};
-  --title-gap: ${titleGap}px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
 }
 
@@ -141,17 +121,6 @@ body { font-family: var(--font); }
   column-width: var(--canvas-w);
   column-gap: 0;
   column-fill: auto;
-}
-
-.title {
-  font-size: calc(var(--content-font) * var(--title-scale));
-  font-weight: 800;
-  line-height: 1.15;
-  word-break: break-word;
-  margin-bottom: var(--title-gap);
-  padding-left: var(--pad);
-  padding-right: var(--pad);
-  break-after: avoid;
 }
 
 .content {
@@ -187,19 +156,16 @@ body { font-family: var(--font); }
 .content img { max-width: 100%; height: auto; display: block; }
 `;
 
-  const titleHtml = title ? `<div class="title">${escapeHtml(title)}</div>` : '';
-
   return `<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=${width}, height=${height}, initial-scale=1" />
-    <title>${escapeHtml(title || 'XHS')}</title>
+    <title>${escapeHtml('XHS')}</title>
     <style>${css}</style>
   </head>
   <body>
     <div class="container">
-      ${titleHtml}
       <div class="content">${bodyHtml}</div>
     </div>
   </body>
@@ -270,7 +236,7 @@ function findChromeExecutable() {
  * 计算实际页数并截图
  */
 async function screenshotPages(htmlPath, outDir, config) {
-  const { width, height, deviceScale, format, quality } = config;
+  const { width, height, deviceScale } = config;
 
   // 优先使用系统 Chrome
   const chromeExecutable = findChromeExecutable();
@@ -278,7 +244,7 @@ async function screenshotPages(htmlPath, outDir, config) {
 
   const browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({
-    viewport: { width: width * config.maxPages, height },
+    viewport: { width: width * INTERNAL_MAX_PAGES, height },
     deviceScaleFactor: deviceScale,
   });
   const page = await context.newPage();
@@ -320,7 +286,7 @@ async function screenshotPages(htmlPath, outDir, config) {
 
   // 截取每一页（通过 clip 精确截取每一列）
   for (let i = 0; i < actualPages; i++) {
-    const outputPath = path.join(outDir, `${String(i + 1).padStart(2, '0')}.${format}`);
+    const outputPath = path.join(outDir, `${String(i + 1).padStart(2, '0')}-page.png`);
     const screenshotOptions = {
       path: outputPath,
       clip: {
@@ -330,11 +296,6 @@ async function screenshotPages(htmlPath, outDir, config) {
         height,
       },
     };
-
-    if (format === 'jpg' || format === 'jpeg') {
-      screenshotOptions.type = 'jpeg';
-      screenshotOptions.quality = quality;
-    }
 
     await page.screenshot(screenshotOptions);
     console.log(`已生成: ${outputPath}`);
@@ -348,7 +309,7 @@ async function screenshotPages(htmlPath, outDir, config) {
  * 主函数
  */
 async function main() {
-  const { mdFile, outDir, title, config } = parseArgs();
+  const { mdFile, outDir, config } = parseArgs();
 
   // 读取 Markdown 文件
   if (!fs.existsSync(mdFile)) {
@@ -356,17 +317,27 @@ async function main() {
     process.exit(1);
   }
 
+  // Ensure output directory exists and save a copy of the source Markdown.
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+  try {
+    const sourceExt = path.extname(mdFile) || '.md';
+    const sourcePath = path.join(outDir, `source${sourceExt}`);
+    fs.copyFileSync(mdFile, sourcePath);
+  } catch {
+    console.warn('⚠️  无法写入 source 文件，将继续生成图片');
+  }
+
   const markdown = fs.readFileSync(mdFile, 'utf-8');
-  const docTitle = title || extractTitle(markdown) || path.basename(mdFile, '.md');
 
   console.log(`处理文件: ${mdFile}`);
-  console.log(`标题: ${docTitle}`);
 
   // 渲染 Markdown
   const bodyHtml = renderMarkdown(markdown, mdFile);
 
   // 生成 HTML
-  const html = generateHTML(bodyHtml, docTitle, config);
+  const html = generateHTML(bodyHtml, '', config);
 
   // 保存临时 HTML 文件
   const tempDir = path.join(outDir, 'pages');
