@@ -5,6 +5,11 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 0.1.0 - 2026-02-11
+
+### 新功能
+- 将 `xhs-md-screenshot-images` 更名为 `xhs-md2img`
+
 ## 0.0.5 - 2026-02-06
 
 ### 修复
