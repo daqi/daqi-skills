@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
   padding: 80,           // 内边距
   gap: 28,               // 元素间距
   bodyFontPx: 50,        // 正文字号
-  lineHeight: 1.5,       // 行高
+  lineHeight: 1.9,       // 行高
   paragraphGap: 40,      // 段落间距
   deviceScale: 2,        // 设备像素比
 };
@@ -131,6 +131,7 @@ body { font-family: var(--font); }
   padding-right: var(--pad);
 }
 
+.content h1 { font-size: 3em; line-height: 1.2; margin: 0 0 ${paragraphGap}px; }
 .content p { margin: 0 0 ${paragraphGap}px; }
 .content strong { font-weight: 800; }
 .content em { font-style: italic; }
@@ -144,6 +145,18 @@ body { font-family: var(--font); }
 }
 .content blockquote p {
   margin: 2px 0;
+}
+.content pre {
+  margin: 0 0 ${paragraphGap}px;
+  padding: 24px;
+  background: #f5f5f5;
+  border-radius: 24px;
+  overflow-x: auto;
+}
+.content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
 }
 .content code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
