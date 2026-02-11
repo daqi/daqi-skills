@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
   padding: 80,           // 内边距
   gap: 28,               // 元素间距
   bodyFontPx: 50,        // 正文字号
-  lineHeight: 1.9,       // 行高
+  lineHeight: 1.5,       // 行高
   paragraphGap: 40,      // 段落间距
   deviceScale: 2,        // 设备像素比
 };
@@ -126,7 +126,6 @@ body { font-family: var(--font); }
 .content {
   font-size: var(--content-font);
   line-height: ${lineHeight};
-  font-weight: 400;
   word-break: break-word;
   padding-left: var(--pad);
   padding-right: var(--pad);
@@ -140,10 +139,11 @@ body { font-family: var(--font); }
 .content blockquote {
   margin: 0 0 ${paragraphGap}px;
   padding: 12px 0 12px 20px;
-  border-left: 6px solid #111;
+  border-left: 6px solid #d0d7de;
+  color: #57606a;
 }
 .content blockquote p {
-  margin: 5px 0;
+  margin: 2px 0;
 }
 .content code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
