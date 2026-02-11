@@ -21,6 +21,10 @@ A collection of article writing and content creation skills
 npx skills add daqi-skills
 ```
 
+## Acknowledgements
+
+- baoyu-skills
+
 ## License
 
 MIT
