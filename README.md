@@ -1,6 +1,6 @@
 # Daqi Skills
 
-A collection of article writing and content creation skills for Claude Code.
+A collection of article writing and content creation skills
 
 ## Skills
 
@@ -18,7 +18,7 @@ A collection of article writing and content creation skills for Claude Code.
 ## Installation
 
 ```bash
-claude skills install daqi-skills
+npx skills add daqi-skills
 ```
 
 ## License
